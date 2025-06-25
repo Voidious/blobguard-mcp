@@ -1,10 +1,10 @@
 # BlobGuard MCP
 
-TODO
+BlobGuard MCP is a lightweight, session-isolated blob storage and diff server designed for LLM coding agents making large or frequent code edits. It helps offload text processing overhead, avoid hallucinations, and maintain fidelity of in-progress work.
 
 ## Purpose
 
-TODO
+BlobGuard MCP provides a multi-tenant, in-memory blob storage and diffing service, purpose-built for LLM coding agents. By handling blob storage and diffing outside the agent, it enables efficient, accurate management of large or numerous code changes, reducing hallucination risk and preserving the integrity of ongoing work.
 
 ## Multi-Session Support
 
@@ -73,14 +73,44 @@ Once configured, your AI coding assistant will be able to use the BlobGuard MCP 
 For best results with BlobGuard MCP, load the file [blobguard-rules.md](./blobguard-rules.md) into your AI-assisted coding editor (such as Cursor or Windsurf) as rules. This enables your coding assistant to follow best practices and use BlobGuard MCP efficiently and effectively. You may also read the file if you wish, but its main purpose is to serve as a ruleset for your coding assistant.
 
 ## Available Tools
-You can interact with the server using the following tools:
 
-TODO
+### save_blob
+Save a blob with a given name and optional metadata.
 
-## Running Tests
+**Parameters:**
+- `name` (str): The unique name for the blob.
+- `content` (str): The content to store in the blob.
+- `metadata` (dict, optional): Optional metadata to associate with the blob.
+- `force` (bool, optional): If True, overwrite any existing blob with the same name. Default is False.
 
-This project includes a test suite to verify its functionality. The tests use `pytest` and run in-memory without needing to keep the server running in a separate process.
+**Returns:**
+- `dict`: `{ "success": True }` if saved, or `{ "error": ... }` if the blob exists and force is not set.
 
-To run the tests, execute the following command from the root directory:
-
+**Example:**
+```python
+save_blob(name="foo", content="hello world", metadata={"author": "alice"})
 ```
+
+### get_blob
+Retrieve a blob and its metadata by name.
+
+**Parameters:**
+- `name` (str): The name of the blob to retrieve.
+
+**Returns:**
+- `dict`: `{ "content": content, "metadata": metadata }` if found, or `{ "error": ... }` if not found.
+
+**Example:**
+```python
+get_blob(name="foo")
+```
+
+### diff
+Return a unified diff between two blobs by name, similar to the output of the diff command.
+
+**Parameters:**
+- `name1` (str): The name of the first blob.
+- `name2` (str): The name of the second blob.
+
+**Returns:**
+- `dict`: `{ "diff": unified_diff_string }` if both blobs exist, or `{ "error": ... }`
