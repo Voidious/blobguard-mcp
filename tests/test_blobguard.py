@@ -4,6 +4,11 @@ import pytest  # type: ignore
 from fastmcp import Client
 from main import BlobGuardMCP
 import json
+import sys
+import subprocess
+import time
+import socket
+import random
 
 
 @pytest.fixture
@@ -122,3 +127,55 @@ async def test_diff_blobs(client):
     )
     # Unified diff for identical files is empty
     assert result["diff"] == ""
+
+
+@pytest.mark.asyncio
+async def test_http_server_basic():
+    """
+    Start the server in HTTP mode as a subprocess, connect via HTTP, and verify
+    save/get.
+    """
+    # Pick a random port in a safe range
+    port = random.randint(9000, 9999)
+    host = "127.0.0.1"
+    url = f"http://{host}:{port}/mcp/"
+
+    # Start the server subprocess
+    proc = subprocess.Popen(
+        [sys.executable, "main.py", "--http", "--host", host, "--port", str(port)],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    try:
+        # Wait for the server to start (simple retry loop)
+        for _ in range(30):
+            try:
+                with socket.create_connection((host, port), timeout=0.2):
+                    break
+            except OSError:
+                time.sleep(0.2)
+        else:
+            raise RuntimeError("HTTP server did not start in time")
+
+        # Use FastMCP Client to connect over HTTP
+        async with Client(url) as client:
+            # Save a blob
+            save_result = await client.call_tool(
+                "save_blob", {"name": "httpfoo", "content": "bar"}
+            )
+            save_text = getattr(save_result[0], "text", None)
+            assert save_text is not None
+            save_data = json.loads(save_text)
+            assert save_data["success"] is True
+            # Get the blob
+            get_result = await client.call_tool("get_blob", {"name": "httpfoo"})
+            get_text = getattr(get_result[0], "text", None)
+            assert get_text is not None
+            get_data = json.loads(get_text)
+            assert get_data["content"] == "bar"
+    finally:
+        proc.terminate()
+        try:
+            proc.wait(timeout=5)
+        except Exception:
+            proc.kill()
